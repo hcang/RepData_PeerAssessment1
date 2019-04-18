@@ -1,25 +1,109 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Data Course Project #1"
+author: "HCANG"
+date: "April 18, 2019"
+output: html_document
 ---
 
+##Step 1:
+####Code for reading and downloading the data set, and pre-loading necessary packages
 
-## Loading and preprocessing the data
+```{r,echo=TRUE,message=FALSE}
+library(dplyr)
+fileURL <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+file <- "repdata_2Fdata_Factivity.zip"
+if (!file.exists(file)){
+  download.file(fileURL,file,mode="wb")
+  }
+path <- "repdata_Factivity"
+if(!file.exists(path)){
+  unzip(file)
+}
+activityDF <- read.csv("activity.csv")
+```
 
+##Step 2:
+####What is the mean total number of steps taken per day
+```{r,echo=TRUE}
+StepPerDay <- activityDF %>% group_by(date) %>% summarize(sum(steps,na.rm=TRUE))
+colnames(StepPerDay) <- c("Date","Steps")
+hist(StepPerDay$Steps,xlab="Number of Steps",ylab="Frequency",main="Steps Per Day")
+```
 
+##Step 3:
+####Calculate the mean and median of the total number of steps taken
+```{r,echo=TRUE}
+MeanStepsPerDay <- mean(StepPerDay$Steps[StepPerDay$Steps!=0],na.rm=TRUE)
+MedianStepsPerDay <- median(StepPerDay$Steps[(StepPerDay$Steps!=0)],na.rm=TRUE)
+MeanStepsPerDay
+MedianStepsPerDay
+```
 
-## What is mean total number of steps taken per day?
+##Step 4:
+####Creating a time series plot for daily activity (in 5 minute intervals)
+```{r,echo=TRUE}
+ActivityIntervalAve <- activityDF %>% group_by(interval) %>% summarize(mean(steps,na.rm=TRUE))
+colnames(ActivityIntervalAve) <- c("Interval","Steps")
+plot(x=ActivityIntervalAve$Interval,y=ActivityIntervalAve$Steps,type="l",main="Average Daily Steps per Interval")
+```
 
+##Step 5:
+####Calculate which interval returns the most average number of steps
+```{r,echo=TRUE}
+ActivityIntervalAve[which(ActivityIntervalAve$Steps==max(ActivityIntervalAve$Steps)),]
+```
 
+##Step 6:
+####Calculating total number of NA's in the data set
+```{r,echo=TRUE}
+sum(is.na(activityDF))
+```
 
-## What is the average daily activity pattern?
+##Step 7:
+####Replacing NA's with the mean for the each interval
+```{r,echo=TRUE}
+activityDFNA <- activityDF
+for (i in 1:nrow(activityDFNA)){
+   ifelse(is.na(activityDFNA$steps[i])==TRUE,
+          activityDFNA$steps[i] <- ActivityIntervalAve$Steps[ActivityIntervalAve$Interval==activityDFNA$interval[i]],
+          activityDFNA$steps[i] <- activityDF$steps[i])
+}
+```
 
+##Step 8:
+####Create a histogram for the total number of steps taken per day
+```{r,echo=TRUE}
+StepPerDayNA <- activityDFNA %>% group_by(date) %>% summarize(sum(steps,na.rm=TRUE))
+colnames(StepPerDayNA) <- c("Date","Steps")
+hist(StepPerDayNA$Steps,xlab="Number of Steps",ylab="Frequency",main="Steps Per Day")
+```
 
+##Step 9:
+####Calculating the mean and mediam of the new data set
+```{r,echo=TRUE}
+MeanStepsPerDayNA <- mean(StepPerDayNA$Steps[StepPerDayNA$Steps!=0],na.rm=TRUE)
+MedianStepsPerDayNA <- median(StepPerDayNA$Steps[(StepPerDayNA$Steps!=0)],na.rm=TRUE)
+MeanStepsPerDayNA
+MedianStepsPerDayNA
+```
+#####The mean remains the same while the median increased slightly. Imputing the mean doesn't really skew the data for this set
 
-## Imputing missing values
+##Step 10:
+####Creating a new factor variable for weekdays and weekend
+```{r,echo=TRUE}
+activityDFNA$TypeofDay <- ifelse(weekdays(as.Date(activityDFNA$date))=="Saturday"|weekdays(as.Date(activityDFNA$date))=="Sunday","Weekend","Weekday")
+```
 
+##Step 11:
+####Creating a time series plot for weekdays and weekends
+```{r,echo=TRUE}
+par(mfrow=c(1,2))
+ActivityIntervalAveTypeofDay <- activityDFNA %>% group_by(interval,TypeofDay) %>% summarize(mean(steps,na.rm=TRUE))
+colnames(ActivityIntervalAveTypeofDay) <- c("Interval","TypeofDay","Steps")
+ActivityIntervalAveWeekend <- ActivityIntervalAveTypeofDay[which(ActivityIntervalAveTypeofDay$TypeofDay=="Weekend"),]
+ActivityIntervalAveWeekday <- ActivityIntervalAveTypeofDay[which(ActivityIntervalAveTypeofDay$TypeofDay=="Weekday"),]
 
+plot(x=ActivityIntervalAveWeekend$Interval,y=ActivityIntervalAveWeekend$Steps,type="l",main="Average Daily Steps (Weekend)",xlab="Interval",ylab="Steps")
+plot(x=ActivityIntervalAveWeekday$Interval,y=ActivityIntervalAveWeekday$Steps,type="l",main="Average Daily Steps (Weekday)",xlab="Interval",ylab="Steps")
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
